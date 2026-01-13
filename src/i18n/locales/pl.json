@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "Regis Matrix Lab",
+    "subtitle": "Asystent badawczy z efektem digital rain",
+    "welcomeTitle": "Witaj w Regis Matrix",
+    "welcomeBody": "Twój zielony asystent badawczy. Zadaj pytanie, a ja wyszukam kontekst, przeanalizuję źródła i odpowiem.",
+    "inputPlaceholder": "Wpisz pytanie do Regis...",
+    "poweredBy": "Zasilane przez Edge Functions + Google Grounding",
+    "themeLight": "Włącz jasny motyw",
+    "themeDark": "Włącz ciemny motyw",
+    "shortcuts": "Skróty",
+    "clearChat": "Wyczyść czat",
+    "clearChatShortcut": "Ctrl+L",
+    "focusInputShortcut": "Ctrl+K",
+    "undoShortcut": "Ctrl+Z",
+    "redoShortcut": "Ctrl+Y"
+  },
+  "labels": {
+    "model": "Model"
+  },
+  "status": {
+    "title": "Pracuję nad odpowiedzią...",
+    "subtitle": "Zbieram kontekst z internetu",
+    "steps": {
+      "scan": "Skanuję",
+      "ground": "Uziemiam",
+      "analyze": "Analizuję",
+      "generate": "Generuję"
+    }
+  },
+  "messages": {
+    "thinking": "Myślę...",
+    "sources": "Źródła ({{count}})",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano!",
+    "modelUsed": "Model: {{model}}",
+    "timestamp": "{{time}}"
+  },
+  "errors": {
+    "auth": "Uwierzytelnianie nieudane. Zaloguj się ponownie.",
+    "timeout": "Przekroczono limit czasu. Spróbuj prostszego zapytania.",
+    "rateLimit": "Limit żądań przekroczony. Spróbuj później.",
+    "unknown": "Coś poszło nie tak."
+  },
+  "health": {
+    "title": "Panel zdrowia",
+    "model": "Model",
+    "status": "Status",
+    "tokens": "Tokeny",
+    "cost": "Koszt"
+  },
+  "forms": {
+    "inputRequired": "To pole jest wymagane.",
+    "inputMin": "Wpisz co najmniej 3 znaki."
+  },
+  "statusLabels": {
+    "online": "Online",
+    "offline": "Offline"
+  }
+}

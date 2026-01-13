@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "Regis Matrix Lab",
+    "subtitle": "Research assistant with digital rain effect",
+    "welcomeTitle": "Welcome to Regis Matrix",
+    "welcomeBody": "Your green research assistant. Ask a question, and I'll fetch context, analyze sources, and respond.",
+    "inputPlaceholder": "Ask Regis a question...",
+    "poweredBy": "Powered by Edge Functions + Google Grounding",
+    "themeLight": "Enable light mode",
+    "themeDark": "Enable dark mode",
+    "shortcuts": "Shortcuts",
+    "clearChat": "Clear chat",
+    "clearChatShortcut": "Ctrl+L",
+    "focusInputShortcut": "Ctrl+K",
+    "undoShortcut": "Ctrl+Z",
+    "redoShortcut": "Ctrl+Y"
+  },
+  "labels": {
+    "model": "Model"
+  },
+  "status": {
+    "title": "Working on the answer...",
+    "subtitle": "Gathering context from the internet",
+    "steps": {
+      "scan": "Scanning",
+      "ground": "Grounding",
+      "analyze": "Analyzing",
+      "generate": "Generating"
+    }
+  },
+  "messages": {
+    "thinking": "Thinking...",
+    "sources": "Sources ({{count}})",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "modelUsed": "Model: {{model}}",
+    "timestamp": "{{time}}"
+  },
+  "errors": {
+    "auth": "Authentication failed. Please log in again.",
+    "timeout": "Request timed out. Try a simpler query.",
+    "rateLimit": "Rate limit exceeded. Try again later.",
+    "unknown": "Something went wrong."
+  },
+  "health": {
+    "title": "Health Dashboard",
+    "model": "Model",
+    "status": "Status",
+    "tokens": "Tokens",
+    "cost": "Cost"
+  },
+  "forms": {
+    "inputRequired": "This field is required.",
+    "inputMin": "Please enter at least 3 characters."
+  },
+  "statusLabels": {
+    "online": "Online",
+    "offline": "Offline"
+  }
+}

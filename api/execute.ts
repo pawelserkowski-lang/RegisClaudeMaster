@@ -1,8 +1,13 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { listAvailableModels } from './providers';
+import { log } from './logger';
+import { recordUsage } from './metrics';
+import { verifyAccessToken } from './auth-utils';
+import { buildCorsHeaders } from './cors';
 
 interface InputPayload {
   prompt: string;
   model?: string;
+  stream?: boolean;
 }
 
 interface SearchResult {
@@ -29,13 +34,17 @@ interface GoogleSearchResponse {
   items?: GoogleSearchItem[];
 }
 
+const RATE_LIMIT_WINDOW = 60_000;
+const RATE_LIMIT_MAX = 20;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
 // Perform web grounding via Google Custom Search
 async function performGrounding(query: string): Promise<SearchResult[]> {
   const apiKey = process.env.GOOGLE_API_KEY;
   const searchCx = process.env.GOOGLE_SEARCH_CX;
 
   if (!apiKey || !searchCx) {
-    console.log('Google Search not configured, skipping grounding');
+    log('info', 'Google Search not configured, skipping grounding');
     return [];
   }
 
@@ -47,7 +56,7 @@ async function performGrounding(query: string): Promise<SearchResult[]> {
     });
 
     if (!response.ok) {
-      console.error('Google Search failed:', response.status);
+      log('warn', 'Google Search failed', { status: response.status });
       return [];
     }
 
@@ -59,138 +68,75 @@ async function performGrounding(query: string): Promise<SearchResult[]> {
       snippet: item.snippet || '',
     }));
   } catch (error) {
-    console.error('Grounding error:', error);
+    log('error', 'Grounding error', { error });
     return [];
   }
 }
 
-// Call Gemini API
-async function callGemini(prompt: string, context: string): Promise<string> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY not configured');
-  }
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: context
-                  ? `Context from web search:\n${context}\n\nUser request:\n${prompt}`
-                  : prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-        },
-      }),
-      signal: AbortSignal.timeout(60000),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
-}
-
-// Call Ollama via Cloudflare Tunnel
-async function callOllama(prompt: string, context: string): Promise<string> {
-  const tunnelUrl = process.env.CLOUDFLARE_TUNNEL_URL;
-
-  if (!tunnelUrl) {
-    throw new Error('CLOUDFLARE_TUNNEL_URL not configured');
-  }
-
-  const response = await fetch(`${tunnelUrl}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'qwen2.5-coder:7b',
-      prompt: context ? `Context:\n${context}\n\nTask:\n${prompt}` : prompt,
-      stream: false,
-    }),
-    signal: AbortSignal.timeout(120000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Ollama error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.response || '';
-}
-
-// Check if prompt is code-related
-function isCodePrompt(prompt: string): boolean {
-  const codeKeywords = [
-    'code', 'function', 'implement', 'script', 'program',
-    'debug', 'fix', 'refactor', 'rust', 'python', 'javascript',
-    'typescript', 'sql', 'api', 'endpoint', 'algorithm',
-  ];
-
-  const promptLower = prompt.toLowerCase();
-  return codeKeywords.some((kw) => promptLower.includes(kw));
-}
-
 // Validate API key
-function validateApiKey(req: VercelRequest): boolean {
+function validateApiKey(req: Request): boolean {
   const expectedKey = process.env.INTERNAL_AUTH_KEY;
 
   if (!expectedKey) {
     return true; // No auth configured
   }
 
-  const providedKey = req.headers['x-api-key'];
+  const providedKey = req.headers.get('x-api-key');
   return providedKey === expectedKey;
 }
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-): Promise<void> {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  return forwarded?.split(',')[0]?.trim() ?? 'unknown';
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || entry.resetAt < now) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return false;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return true;
+  }
+  entry.count += 1;
+  return false;
+}
+
+export const config = {
+  runtime: 'edge',
+  regions: ['cdg1', 'fra1'],
+};
+
+export default async function handler(req: Request): Promise<Response> {
+  const headers = buildCorsHeaders(req.headers.get('origin'));
 
   // Preflight
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return new Response(null, { status: 200, headers });
   }
 
   // Only POST
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
   }
 
-  // Validate API key
-  if (!validateApiKey(req)) {
-    res.status(401).json({ error: 'Invalid API key' });
-    return;
+  // Rate limit
+  if (isRateLimited(getClientIp(req))) {
+    return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), { status: 429, headers });
+  }
+
+  const userId = await verifyAccessToken(req);
+  if (!userId && !validateApiKey(req)) {
+    return new Response(JSON.stringify({ error: 'Invalid API key' }), { status: 401, headers });
   }
 
   try {
-    const input: InputPayload = req.body;
+    const input = (await req.json()) as InputPayload;
 
     if (!input?.prompt) {
-      res.status(400).json({ error: 'Missing prompt' });
-      return;
+      return new Response(JSON.stringify({ error: 'Missing prompt' }), { status: 400, headers });
     }
 
     // Step 1: Grounding
@@ -199,24 +145,45 @@ export default async function handler(
       .map((s) => `- ${s.title}: ${s.snippet}`)
       .join('\n');
 
-    // Step 2: Route to appropriate model
-    let response: string;
-    let modelUsed: string;
+    const availableModels = listAvailableModels();
+    const fallbackOrder = ['anthropic', 'openai', 'google', 'mistral', 'groq', 'ollama'];
 
-    if (isCodePrompt(input.prompt) && process.env.CLOUDFLARE_TUNNEL_URL) {
-      // Code task -> try Ollama first
-      try {
-        response = await callOllama(input.prompt, context);
-        modelUsed = 'ollama/qwen2.5-coder';
-      } catch {
-        // Fallback to Gemini
-        response = await callGemini(input.prompt, context);
-        modelUsed = 'gemini-2.0-flash (fallback)';
+    const selectedDefinition = input.model
+      ? availableModels.find((definition) => definition.id === input.model)
+      : undefined;
+
+    const candidates = selectedDefinition
+      ? [selectedDefinition]
+      : fallbackOrder
+          .map((provider) => availableModels.find((definition) => definition.provider === provider))
+          .filter((definition): definition is NonNullable<typeof definition> => Boolean(definition));
+
+    let response = '';
+    let modelUsed = '';
+    let cost = 0;
+
+    for (const definition of candidates) {
+      if (!definition.isConfigured()) {
+        continue;
       }
-    } else {
-      // General task -> Gemini
-      response = await callGemini(input.prompt, context);
-      modelUsed = 'gemini-2.0-flash';
+      try {
+        response = await definition.call({
+          prompt: input.prompt,
+          context,
+          model: definition.id,
+        });
+        modelUsed = definition.id;
+        const tokens = Math.ceil(response.length / 4);
+        cost = (tokens / 1000) * definition.costPer1kTokens;
+        recordUsage(definition.id, tokens, cost);
+        break;
+      } catch (error) {
+        log('warn', 'Provider call failed', { provider: definition.provider, error });
+      }
+    }
+
+    if (!response) {
+      throw new Error('All providers failed');
     }
 
     const output: OutputPayload = {
@@ -227,11 +194,14 @@ export default async function handler(
       grounding_performed: sources.length > 0,
     };
 
-    res.status(200).json(output);
+    return new Response(JSON.stringify(output), { status: 200, headers });
   } catch (error) {
-    console.error('Handler error:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Internal server error',
-    });
+    log('error', 'Handler error', { error });
+    return new Response(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Internal server error',
+      }),
+      { status: 500, headers }
+    );
   }
 }

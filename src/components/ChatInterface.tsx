@@ -1,7 +1,13 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Bot, ExternalLink, Code, FileText } from 'lucide-react';
-import { cn } from '../lib/utils';
-import type { Message } from '../lib/useChat';
+import { User, Bot, ExternalLink, Code, FileText, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import { useTranslation } from 'react-i18next';
+import { cn, copyToClipboard, formatRelativeTime } from '../lib/utils';
+import type { Message } from '../lib/types';
+import { SkeletonMessage } from './SkeletonMessage';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -9,6 +15,17 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
+  const { t, i18n } = useTranslation();
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = async (code: string, key: string) => {
+    const success = await copyToClipboard(code);
+    if (success) {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1200);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {messages.map((message, index) => (
@@ -16,7 +33,7 @@ export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
           key={message.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
+          transition={{ delay: index * 0.05, duration: 0.3 }}
           className={cn(
             'flex gap-4',
             message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
@@ -53,14 +70,48 @@ export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
                   : 'bg-emerald-950/60 text-emerald-100 border-emerald-400/20 rounded-tl-sm'
               )}
             >
-              {/* Code detection */}
-              {message.content.includes('```') ? (
-                <div className="text-left">
-                  <CodeBlock content={message.content} />
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              )}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                components={{
+                  a({ children, href }) {
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-emerald-200 underline">
+                        {children}
+                      </a>
+                    );
+                  },
+                  code({ inline, className, children }) {
+                    if (inline) {
+                      return <code className="text-emerald-200/90">{children}</code>;
+                    }
+                    const language = className?.replace('language-', '') || 'text';
+                    const code = String(children).replace(/\n$/, '');
+                    const copyKey = `${message.id}-${language}`;
+                    const isCopied = copiedKey === copyKey;
+                    return (
+                      <div className="rounded-lg overflow-hidden bg-emerald-950/70 border border-emerald-400/20">
+                        <div className="flex items-center justify-between px-4 py-2 bg-emerald-900/60 text-xs text-emerald-200/70">
+                          <span>{language}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(code, copyKey)}
+                            className="hover:text-emerald-100 transition-colors inline-flex items-center gap-1"
+                          >
+                            {isCopied ? <Check className="w-3 h-3" /> : null}
+                            {isCopied ? t('messages.copied') : t('messages.copy')}
+                          </button>
+                        </div>
+                        <pre className="p-4 overflow-x-auto text-sm">
+                          <code className={className}>{children}</code>
+                        </pre>
+                      </div>
+                    );
+                  },
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
 
             {/* Sources */}
@@ -68,7 +119,7 @@ export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
               <div className="mt-3 space-y-2">
                 <div className="flex items-center gap-2 text-xs text-emerald-300/70">
                   <FileText className="w-3 h-3" />
-                  <span>Źródła ({message.sources.length})</span>
+                  <span>{t('messages.sources', { count: message.sources.length })}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {message.sources.map((source, i) => (
@@ -93,76 +144,31 @@ export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
             {message.modelUsed && (
               <div className="mt-2 flex items-center gap-2 text-xs text-emerald-300/60">
                 <Code className="w-3 h-3" />
-                <span>{message.modelUsed}</span>
+                <span>{t('messages.modelUsed', { model: message.modelUsed })}</span>
               </div>
             )}
+
+            <div className="mt-2 text-[11px] text-emerald-300/50">
+              {t('messages.timestamp', { time: formatRelativeTime(message.timestamp, i18n.language) })}
+            </div>
           </div>
         </motion.div>
       ))}
 
       {/* Loading indicator */}
       {isLoading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex gap-4"
-        >
-          <div className="w-10 h-10 rounded-lg bg-emerald-400/20 border border-emerald-400/50 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-emerald-200" />
-          </div>
-          <div className="flex items-center gap-2 px-5 py-3 rounded-2xl rounded-tl-sm bg-emerald-950/60 border border-emerald-400/20">
-            <div className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 rounded-full bg-emerald-300"
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: i * 0.2,
-                  }}
-                />
-              ))}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <div className="flex gap-4">
+            <div className="w-10 h-10 rounded-lg bg-emerald-400/20 border border-emerald-400/50 flex items-center justify-center">
+              <Bot className="w-5 h-5 text-emerald-200" />
             </div>
-            <span className="text-emerald-300/70 text-sm">Myślę...</span>
+            <div className="flex-1">
+              <SkeletonMessage />
+            </div>
           </div>
+          <p className="text-sm text-emerald-300/70">{t('messages.thinking')}</p>
         </motion.div>
       )}
-    </div>
-  );
-}
-
-function CodeBlock({ content }: { content: string }) {
-  const parts = content.split(/(```[\s\S]*?```)/g);
-
-  return (
-    <div className="space-y-3">
-      {parts.map((part, i) => {
-        if (part.startsWith('```')) {
-          const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
-          const language = match?.[1] || 'code';
-          const code = match?.[2] || '';
-
-          return (
-            <div key={i} className="rounded-lg overflow-hidden bg-emerald-950/70 border border-emerald-400/20">
-              <div className="flex items-center justify-between px-4 py-2 bg-emerald-900/60 text-xs text-emerald-200/70">
-                <span>{language}</span>
-                <button
-                  onClick={() => navigator.clipboard.writeText(code)}
-                  className="hover:text-emerald-100 transition-colors"
-                >
-                  Kopiuj
-                </button>
-              </div>
-              <pre className="p-4 overflow-x-auto text-sm">
-                <code className="text-emerald-100/90">{code}</code>
-              </pre>
-            </div>
-          );
-        }
-        return part ? <p key={i} className="whitespace-pre-wrap">{part}</p> : null;
-      })}
     </div>
   );
 }

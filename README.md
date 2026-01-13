@@ -1,20 +1,22 @@
 # Regis Claude Master
 
-> AI-Powered Research Assistant with Rust Backend and React Frontend
+> AI-Powered Research Assistant with Vercel Edge Functions and React Frontend
 
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)](https://vercel.com)
-[![Rust](https://img.shields.io/badge/Rust-Serverless-orange?logo=rust)](https://www.rust-lang.org/)
-[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev/)
+[![Edge](https://img.shields.io/badge/Vercel-Edge-black?logo=vercel)](https://vercel.com)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.2-blue?logo=typescript)](https://www.typescriptlang.org/)
 
 ## Overview
 
 Regis Claude Master is a full-stack AI research assistant that combines:
 
-- **Rust Serverless Backend** - High-performance API running on Vercel Edge
+- **Vercel Edge Functions Backend** - Low-latency API runtime with provider fallbacks
 - **React Frontend** - Modern UI with Framer Motion animations
 - **Web Grounding** - Google Custom Search for context-aware responses
-- **Multi-Model Support** - Ollama (via Cloudflare Tunnel) and Gemini API
+- **Multi-Model Support** - Anthropic → OpenAI → Google → Mistral → Groq → Ollama
+- **Offline Support** - Service Worker + AES-256 encrypted IndexedDB backups
+- **Internationalization** - i18next with lazy-loaded locales
 
 ## Architecture
 
@@ -24,12 +26,12 @@ Regis Claude Master is a full-stack AI research assistant that combines:
 ├─────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐    ┌─────────────────────────────┐ │
 │  │   Static Site   │    │   Serverless Function       │ │
-│  │   (React/Vite)  │    │   (Rust/handler.rs)         │ │
+│  │   (React/Vite)  │    │   (Edge/TypeScript)         │ │
 │  │                 │    │                             │ │
 │  │  src/App.tsx    │───▶│  /api/execute               │ │
 │  │  src/components │    │                             │ │
 │  │  dist/          │    │  1. Grounding (Google CSE)  │ │
-│  └─────────────────┘    │  2. Model Selection         │ │
+│  └─────────────────┘    │  2. Provider Fallback       │ │
 │                         │  3. Response Generation     │ │
 │                         └─────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
@@ -48,43 +50,48 @@ Regis Claude Master is a full-stack AI research assistant that combines:
 |---------|-------------|
 | **Web Grounding** | Automatic context from Google Custom Search |
 | **Smart Routing** | Code tasks → Ollama, General → Gemini |
-| **Witcher Theme** | Dark mode UI with silver/amber accents |
+| **Matrix Theme** | Glassmorphism UI with green accent |
 | **Research Status** | Visual indicator during grounding phase |
-| **Code Highlighting** | Syntax-aware code block rendering |
+| **Code Highlighting** | Markdown rendering with syntax highlighting |
 | **Source Attribution** | Links to search results used |
+| **Health Dashboard** | Provider status + token/cost counters |
+| **JWT Auth** | httpOnly cookies with refresh tokens |
 
 ## Tech Stack
 
 ### Backend (`api/`)
-- **Rust** - Serverless function
-- **vercel_runtime** - Vercel Rust runtime
-- **reqwest** - HTTP client
-- **serde** - JSON serialization
-- **tokio** - Async runtime
+- **TypeScript** - Edge runtime
+- **Vercel Edge Functions** - Low latency execution
+- **jose** - JWT signing/verification
 
 ### Frontend (`src/`)
-- **React 18** - UI framework
+- **React 19** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool
 - **Tailwind CSS** - Styling
 - **Framer Motion** - Animations
-- **Zustand** - State management
+- **TanStack Query** - Server state
+- **Zustand** - Shared state (reserved for global needs)
+- **React Hook Form + Zod** - Forms and validation
+- **i18next** - Localization
 - **Lucide React** - Icons
 
 ## Project Structure
 
 ```
 RegisClaudeMaster/
-├── api/                    # Rust serverless function
-│   ├── Cargo.toml          # Rust dependencies
-│   └── handler.rs          # Main entry point
+├── api/                    # Edge functions
+│   ├── execute.ts          # Main request handler
+│   ├── health.ts           # Health dashboard
+│   ├── models.ts           # Model listing
+│   └── auth/               # JWT auth endpoints
 ├── src/                    # React frontend
 │   ├── components/
 │   │   ├── ChatInterface.tsx
 │   │   └── ResearchStatus.tsx
 │   ├── lib/
 │   │   ├── api-client.ts
-│   │   ├── useChat.ts
+│   │   ├── storage.ts
 │   │   └── utils.ts
 │   ├── styles/
 │   │   └── globals.css
@@ -119,7 +126,12 @@ Set these in Vercel Dashboard → Project Settings → Environment Variables:
 | `GOOGLE_SEARCH_CX` | Yes | Custom Search Engine ID |
 | `CLOUDFLARE_TUNNEL_URL` | No | Ollama tunnel URL |
 | `INTERNAL_AUTH_KEY` | No | API authentication key |
-| `VITE_API_KEY` | No | Frontend API key |
+| `JWT_SECRET` | Yes | JWT signing secret |
+| `ALLOWED_ORIGINS` | Yes | Comma-separated allowed origins |
+| `ANTHROPIC_API_KEY` | No | Anthropic API key |
+| `OPENAI_API_KEY` | No | OpenAI API key |
+| `MISTRAL_API_KEY` | No | Mistral API key |
+| `GROQ_API_KEY` | No | Groq API key |
 
 ### Deploy to Vercel
 
@@ -140,6 +152,12 @@ Or use the Vercel Dashboard:
 3. Build Command: `npm run build`
 4. Output Directory: `dist`
 
+### Environments
+
+- **dev**: local development
+- **preview**: Vercel preview deployments
+- **prod**: main branch
+
 ## Local Development
 
 ### Frontend
@@ -152,9 +170,9 @@ pnpm install
 pnpm dev
 ```
 
-### Backend (mock)
+### Backend (Edge Functions)
 
-For local development, the Rust function won't run directly. Use Vercel CLI:
+For local development, use Vercel CLI:
 
 ```bash
 # Install Vercel CLI
@@ -172,6 +190,12 @@ pnpm test:e2e
 ```
 
 ## API Reference
+
+OpenAPI spec is available in `openapi.yaml` and can generate TypeScript types:
+
+```bash
+pnpm generate:api
+```
 
 ### POST /api/execute
 
@@ -201,10 +225,18 @@ Execute a prompt with web grounding.
       "snippet": "..."
     }
   ],
-  "model_used": "gemini-1.5-flash",
+  "model_used": "gemini-2.0-flash",
   "grounding_performed": true
 }
 ```
+
+### GET /api/models
+
+Returns the list of available models based on configured provider keys.
+
+### GET /api/health
+
+Returns provider status with token/cost counters.
 
 ## Contributing
 
@@ -220,4 +252,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-Built with Rust + React on Vercel | Powered by Claude AI
+Built with Edge Functions + React on Vercel | Powered by multi-model AI

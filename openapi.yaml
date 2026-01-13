@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: Regis Matrix API
+  version: 1.1.0
+servers:
+  - url: https://example.com
+paths:
+  /api/execute:
+    post:
+      summary: Execute prompt with grounding and provider fallback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - prompt
+              properties:
+                prompt:
+                  type: string
+                model:
+                  type: string
+      responses:
+        "200":
+          description: Response from model
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  response:
+                    type: string
+                  sources:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                        link:
+                          type: string
+                        snippet:
+                          type: string
+                  model_used:
+                    type: string
+                  grounding_performed:
+                    type: boolean
+  /api/models:
+    get:
+      summary: List available models
+      responses:
+        "200":
+          description: Available models
+  /api/health:
+    get:
+      summary: Health dashboard
+      responses:
+        "200":
+          description: Health status
+  /api/auth/login:
+    post:
+      summary: Issue access/refresh tokens
+      responses:
+        "200":
+          description: Logged in
+  /api/auth/refresh:
+    post:
+      summary: Refresh tokens
+      responses:
+        "200":
+          description: Refreshed
+  /api/auth/logout:
+    post:
+      summary: Clear tokens
+      responses:
+        "200":
+          description: Logged out

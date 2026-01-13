@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
 import { Search, Globe, Database, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const steps = [
-  { icon: Search, label: 'Skanuję', description: 'Przeszukuję bazę wiedzy...' },
-  { icon: Globe, label: 'Uziemiam', description: 'Pobieram kontekst z sieci...' },
-  { icon: Database, label: 'Analizuję', description: 'Przetwarzam źródła...' },
-  { icon: Sparkles, label: 'Generuję', description: 'Układam odpowiedź...' },
+  { icon: Search, labelKey: 'status.steps.scan' },
+  { icon: Globe, labelKey: 'status.steps.ground' },
+  { icon: Database, labelKey: 'status.steps.analyze' },
+  { icon: Sparkles, labelKey: 'status.steps.generate' },
 ];
 
 const progressMessages = [
@@ -16,6 +17,8 @@ const progressMessages = [
 ];
 
 export function ResearchStatus() {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -27,14 +30,14 @@ export function ResearchStatus() {
         <div className="flex items-center gap-3 mb-4">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: 0.3, repeat: Infinity, ease: 'linear' }}
             className="w-8 h-8 rounded-lg bg-emerald-400/20 flex items-center justify-center border border-emerald-400/40"
           >
             <Search className="w-4 h-4 text-emerald-300" />
           </motion.div>
           <div>
-            <h3 className="text-sm font-semibold text-emerald-100">Pracuję nad odpowiedzią...</h3>
-            <p className="text-xs text-emerald-300/70">Zbieram kontekst z internetu</p>
+            <h3 className="text-sm font-semibold text-emerald-100">{t('status.title')}</h3>
+            <p className="text-xs text-emerald-300/70">{t('status.subtitle')}</p>
           </div>
         </div>
 
@@ -48,14 +51,14 @@ export function ResearchStatus() {
                 scale: [0.95, 1, 0.95],
               }}
               transition={{
-                duration: 2,
+                duration: 0.3,
                 repeat: Infinity,
-                delay: index * 0.5,
+                delay: index * 0.1,
               }}
               className="flex flex-col items-center gap-2 p-3 rounded-xl bg-emerald-900/40 border border-emerald-400/20"
             >
               <step.icon className="w-5 h-5 text-emerald-300" />
-              <span className="text-xs font-medium text-emerald-100">{step.label}</span>
+              <span className="text-xs font-medium text-emerald-100">{t(step.labelKey)}</span>
             </motion.div>
           ))}
         </div>
@@ -66,7 +69,7 @@ export function ResearchStatus() {
             <motion.div
               className="h-full bg-gradient-to-r from-emerald-400 via-emerald-300 to-green-500"
               animate={{ x: ['-100%', '100%'] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 0.3, repeat: Infinity, ease: 'easeInOut' }}
               style={{ width: '50%' }}
             />
           </div>
@@ -74,7 +77,7 @@ export function ResearchStatus() {
             <motion.div
               className="absolute left-0 top-0 flex gap-6 whitespace-nowrap"
               animate={{ x: ['0%', '-50%'] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+              transition={{ duration: 0.3, repeat: Infinity, ease: 'linear' }}
             >
               {[...progressMessages, ...progressMessages].map((message, index) => (
                 <span key={`${message}-${index}`} className="uppercase tracking-[0.2em]">
