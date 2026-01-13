@@ -4,8 +4,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/execute", "destination": "/api/handler" },
-    { "source": "/api/health", "destination": "/api/handler" },
+    { "source": "/api/execute", "destination": "/api/execute" },
+    { "source": "/api/health", "destination": "/api/health" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -19,12 +19,8 @@
     }
   ],
   "functions": {
-    "api/handler.rs": {
-      "runtime": "@vercel/rust@4.0.0",
-      "maxDuration": 120
+    "api/execute.ts": {
+      "maxDuration": 60
     }
-  },
-  "env": {
-    "RUST_BACKTRACE": "1"
   }
 }
