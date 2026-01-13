@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/execute", "destination": "/api/handler" },
+    { "source": "/api/health", "destination": "/api/handler" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, x-api-key" }
+      ]
+    }
+  ],
+  "functions": {
+    "api/handler.rs": {
+      "runtime": "@vercel/rust@4.0.0",
+      "maxDuration": 120
+    }
+  },
+  "env": {
+    "RUST_BACKTRACE": "1"
+  }
+}

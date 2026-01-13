@@ -1,6 +1,7 @@
 # Environment and secrets
 .env
 .env.local
+.env*.local
 *.key
 *.pem
 credentials.json
@@ -10,6 +11,7 @@ credentials.json
 .vscode/
 *.swp
 *.swo
+*.code-workspace
 
 # OS
 .DS_Store
@@ -20,13 +22,13 @@ desktop.ini
 node_modules/
 npm-debug.log
 yarn-error.log
+pnpm-lock.yaml
+.pnpm-store/
 
-# Python
-__pycache__/
-*.py[cod]
-venv/
-.venv/
-*.egg-info/
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
 
 # Build outputs
 dist/
@@ -34,6 +36,7 @@ build/
 out/
 *.exe
 *.dll
+.vercel/
 
 # Logs
 *.log
@@ -43,4 +46,13 @@ logs/
 tmp/
 temp/
 *.tmp
-tmp*
+tmpclaude*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.eslintcache
+*.tsbuildinfo
