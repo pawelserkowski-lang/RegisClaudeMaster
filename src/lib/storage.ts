@@ -78,7 +78,8 @@ export async function loadLatestBackup(): Promise<Message[] | null> {
   const db = await getDb();
   const keys = await db.getAllKeys(STORE_NAME);
   if (keys.length === 0) return null;
-  const latestKey = keys.sort().at(-1);
+  const sortedKeys = keys.sort();
+  const latestKey = sortedKeys.length > 0 ? sortedKeys[sortedKeys.length - 1] : undefined;
   if (latestKey === undefined) return null;
   const record = await db.get(STORE_NAME, latestKey);
   if (!record) return null;

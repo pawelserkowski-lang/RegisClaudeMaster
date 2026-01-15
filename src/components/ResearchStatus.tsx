@@ -44,7 +44,7 @@ export function ResearchStatus() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {steps.map((step, index) => (
             <motion.div
-              key={step.label}
+              key={step.labelKey}
               initial={{ opacity: 0.3, scale: 0.95 }}
               animate={{
                 opacity: [0.3, 1, 0.3],

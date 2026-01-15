@@ -81,8 +81,9 @@ export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
                       </a>
                     );
                   },
-                  code({ inline, className, children }) {
-                    if (inline) {
+                  code({ className, children }) {
+                    const isInline = !className;
+                    if (isInline) {
                       return <code className="text-emerald-200/90">{children}</code>;
                     }
                     const language = className?.replace('language-', '') || 'text';

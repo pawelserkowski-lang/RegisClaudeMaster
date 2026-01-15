@@ -157,7 +157,7 @@ function App() {
   };
 
   const handleUndo = () => {
-    const previous = history.at(-1);
+    const previous = history.length > 0 ? history[history.length - 1] : undefined;
     if (!previous) return;
     setHistory((prev) => prev.slice(0, -1));
     setRedoStack((prev) => [...prev, messages]);
@@ -165,7 +165,7 @@ function App() {
   };
 
   const handleRedo = () => {
-    const next = redoStack.at(-1);
+    const next = redoStack.length > 0 ? redoStack[redoStack.length - 1] : undefined;
     if (!next) return;
     setRedoStack((prev) => prev.slice(0, -1));
     setHistory((prev) => [...prev, messages]);
