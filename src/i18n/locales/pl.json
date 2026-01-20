@@ -16,7 +16,9 @@
     "redoShortcut": "Ctrl+Y"
   },
   "labels": {
-    "model": "Model"
+    "model": "Model",
+    "refreshModels": "Odśwież modele",
+    "loadingModels": "Ładowanie modeli..."
   },
   "status": {
     "title": "Pracuję nad odpowiedzią...",

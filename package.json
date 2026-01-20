@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node node_modules/typescript/bin/tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit",
+    "type-check": "node node_modules/typescript/bin/tsc --noEmit",
     "test:e2e": "playwright test",
     "generate:api": "openapi-typescript openapi.yaml -o src/lib/api-types.ts"
   },

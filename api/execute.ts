@@ -73,12 +73,19 @@ async function performGrounding(query: string): Promise<SearchResult[]> {
   }
 }
 
-// Validate API key
+// Validate API key (requires INTERNAL_AUTH_KEY in production)
 function validateApiKey(req: Request): boolean {
   const expectedKey = process.env.INTERNAL_AUTH_KEY;
+  const isProduction = process.env.NODE_ENV === 'production';
 
+  // In production, API key is REQUIRED if no JWT auth
   if (!expectedKey) {
-    return true; // No auth configured
+    if (isProduction) {
+      log('warn', 'INTERNAL_AUTH_KEY not configured in production');
+      return false; // Deny access in production without auth key
+    }
+    // Allow in development for easier testing
+    return true;
   }
 
   const providedKey = req.headers.get('x-api-key');

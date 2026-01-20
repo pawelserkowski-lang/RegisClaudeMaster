@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, BookOpen, Zap, Sun, Moon, Globe, Trash2, Languages } from 'lucide-react';
+import { Send, BookOpen, Zap, Sun, Moon, Globe, Trash2, Languages, RefreshCw } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,9 +10,9 @@ import { ChatInterface } from './components/ChatInterface';
 import { ResearchStatus } from './components/ResearchStatus';
 import { executePrompt } from './lib/api-client';
 import type { Message } from './lib/types';
-import { fetchModels, type ModelInfo } from './lib/models';
-import { fetchHealth } from './lib/health';
-import { loadLatestBackup, saveBackup } from './lib/storage';
+import { useModelsStore } from './lib/models-store';
+import { fetchHealth, type HealthModelStatus } from './lib/health';
+import { loadLatestBackup, saveBackup, initializeStorage } from './lib/storage';
 import { usePreferencesStore } from './lib/preferences-store';
 
 function App() {
@@ -26,9 +26,18 @@ function App() {
   const [redoStack, setRedoStack] = useState<Message[][]>([]);
   const [showErrors, setShowErrors] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [, setIsAppInitialized] = useState(false);
   const { t, i18n } = useTranslation();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Models store with lazy loading
+  const {
+    models,
+    isLoading: isLoadingModels,
+    fetchModels,
+    refreshModels,
+  } = useModelsStore();
 
   const schema = useMemo(
     () =>
@@ -44,16 +53,60 @@ function App() {
   });
   const promptRegister = register('prompt');
 
-  const { data: models } = useQuery<ModelInfo[]>({
-    queryKey: ['models'],
-    queryFn: fetchModels,
-  });
-
   const { data: health } = useQuery({
     queryKey: ['health'],
     queryFn: fetchHealth,
     refetchInterval: 300000,
   });
+
+  // Initialize app: secure storage + lazy load models
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initialize() {
+      try {
+        // Initialize secure storage (migrate old keys)
+        await initializeStorage();
+
+        // Lazy load models from API
+        await fetchModels();
+
+        if (isMounted) {
+          setIsAppInitialized(true);
+        }
+      } catch (err) {
+        console.warn('App initialization error:', err);
+        if (isMounted) {
+          setIsAppInitialized(true); // Continue even on error
+        }
+      }
+    }
+
+    void initialize();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchModels]);
+
+  // Auto-refresh models when user returns to tab (visibility change)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isOnline) {
+        void fetchModels(); // Will use cache if not expired
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchModels, isOnline]);
+
+  // Manual refresh handler
+  const handleRefreshModels = useCallback(() => {
+    void refreshModels();
+  }, [refreshModels]);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: light)');
@@ -73,7 +126,8 @@ function App() {
     return () => {
       media.removeEventListener('change', handleChange);
     };
-  }, [setLanguage, setTheme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount - setTheme/setLanguage are stable from zustand
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -114,6 +168,17 @@ function App() {
     };
   }, [formState.errors]);
 
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const handleClearChat = useCallback(() => {
     if (messages.length === 0) return;
     setHistory((prev) => [...prev, messages]);
@@ -123,7 +188,7 @@ function App() {
   }, [messages]);
 
   const handleUndo = useCallback(() => {
-    const previous = history.length > 0 ? history[history.length - 1] : undefined;
+    const previous = history.at(-1);
     if (!previous) return;
     setHistory((prev) => prev.slice(0, -1));
     setRedoStack((prev) => [...prev, messages]);
@@ -131,13 +196,14 @@ function App() {
   }, [history, messages]);
 
   const handleRedo = useCallback(() => {
-    const next = redoStack.length > 0 ? redoStack[redoStack.length - 1] : undefined;
+    const next = redoStack.at(-1);
     if (!next) return;
     setRedoStack((prev) => prev.slice(0, -1));
     setHistory((prev) => [...prev, messages]);
     setMessages(next);
-  }, [messages, redoStack]);
+  }, [redoStack, messages]);
 
+  // Keyboard shortcuts - defined after handlers
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key.toLowerCase() === 'k') {
@@ -159,18 +225,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClearChat, handleRedo, handleUndo]);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  }, [handleClearChat, handleUndo, handleRedo]);
 
   const onSubmit = async ({ prompt }: { prompt: string }) => {
     if (isLoading) return;
@@ -335,7 +390,7 @@ function App() {
               <h3 className="text-sm font-semibold">{t('health.title')}</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-emerald-200/80">
-              {health.providers.map((provider) => (
+              {health.providers.map((provider: HealthModelStatus) => (
                 <div
                   key={provider.model}
                   className="rounded-xl border border-emerald-400/20 bg-emerald-900/40 p-3"
@@ -395,15 +450,30 @@ function App() {
                 id="model-select"
                 value={selectedModel}
                 onChange={(event) => setSelectedModel(event.target.value)}
-                className="rounded-lg bg-emerald-950/60 border border-emerald-400/30 px-3 py-1 text-emerald-100"
+                disabled={isLoadingModels}
+                className="rounded-lg bg-emerald-950/60 border border-emerald-400/30 px-3 py-1 text-emerald-100 disabled:opacity-50"
               >
                 <option value="auto">Auto</option>
-                {models?.map((model) => (
+                {models.map((model) => (
                   <option key={model.id} value={model.id}>
                     {model.label}
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={handleRefreshModels}
+                disabled={isLoadingModels}
+                className="p-1.5 rounded-lg border border-emerald-400/20 bg-emerald-950/60 hover:bg-emerald-900/70 disabled:opacity-50 transition-colors"
+                title={t('labels.refreshModels') || 'Refresh models'}
+              >
+                <RefreshCw className={`w-3 h-3 text-emerald-300 ${isLoadingModels ? 'animate-spin' : ''}`} />
+              </button>
+              {models.length > 0 && (
+                <span className="text-emerald-400/60 text-[10px]">
+                  ({models.length})
+                </span>
+              )}
             </div>
           </div>
           <div className="relative">

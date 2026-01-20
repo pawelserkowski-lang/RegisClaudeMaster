@@ -18,29 +18,23 @@
   ],
   "functions": {
     "api/execute.ts": {
-      "maxDuration": 60,
-      "runtime": "edge",
-      "regions": ["cdg1", "fra1"]
+      "maxDuration": 60
     },
     "api/health.ts": {
-      "runtime": "edge",
-      "regions": ["cdg1", "fra1"]
+      "maxDuration": 10
     },
     "api/models.ts": {
-      "runtime": "edge",
-      "regions": ["cdg1", "fra1"]
+      "maxDuration": 10
     },
     "api/auth/login.ts": {
-      "runtime": "edge",
-      "regions": ["cdg1", "fra1"]
+      "maxDuration": 10
     },
     "api/auth/refresh.ts": {
-      "runtime": "edge",
-      "regions": ["cdg1", "fra1"]
+      "maxDuration": 10
     },
     "api/auth/logout.ts": {
-      "runtime": "edge",
-      "regions": ["cdg1", "fra1"]
+      "maxDuration": 10
     }
-  }
+  },
+  "regions": ["cdg1", "fra1"]
 }

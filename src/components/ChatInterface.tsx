@@ -81,10 +81,11 @@ export function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
                       </a>
                     );
                   },
-                  code({ className, children }) {
-                    const isInline = !className;
+                  code({ className, children, ...props }) {
+                    // Detect inline code: if no className and content is single line
+                    const isInline = !className && typeof children === 'string' && !children.includes('\n');
                     if (isInline) {
-                      return <code className="text-emerald-200/90">{children}</code>;
+                      return <code className="text-emerald-200/90" {...props}>{children}</code>;
                     }
                     const language = className?.replace('language-', '') || 'text';
                     const code = String(children).replace(/\n$/, '');

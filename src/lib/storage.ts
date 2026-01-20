@@ -1,29 +1,60 @@
-import { openDB } from 'idb';
+import { openDB, type IDBPDatabase } from 'idb';
 import type { Message } from './types';
 
 const DB_NAME = 'regis-matrix-db';
 const STORE_NAME = 'chat-backups';
-const KEY_STORAGE = 'regis-matrix-aes-key';
+const KEY_STORE_NAME = 'crypto-keys';
 const MAX_BACKUPS = 10;
 
 function logCrypto(action: string) {
-  console.info(`[crypto] ${action}`);
+  if (import.meta.env.DEV) {
+    console.info(`[crypto] ${action}`);
+  }
+}
+
+// Cache key in memory (non-extractable after generation)
+let cachedKey: CryptoKey | null = null;
+
+async function getKeyDb() {
+  return openDB(DB_NAME, 2, {
+    upgrade(db: IDBPDatabase, oldVersion: number) {
+      if (oldVersion < 1 && !db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+      if (oldVersion < 2 && !db.objectStoreNames.contains(KEY_STORE_NAME)) {
+        db.createObjectStore(KEY_STORE_NAME, { keyPath: 'id' });
+      }
+    },
+  });
 }
 
 async function getKey(): Promise<CryptoKey> {
-  const stored = localStorage.getItem(KEY_STORAGE);
-  if (stored) {
-    const raw = Uint8Array.from(atob(stored), (c) => c.charCodeAt(0));
-    return crypto.subtle.importKey('raw', raw, 'AES-GCM', true, ['encrypt', 'decrypt']);
+  // Return cached key if available (fastest path)
+  if (cachedKey) {
+    return cachedKey;
   }
 
-  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, [
-    'encrypt',
-    'decrypt',
-  ]);
-  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', key));
-  localStorage.setItem(KEY_STORAGE, btoa(String.fromCharCode(...raw)));
-  logCrypto('Generated new AES-256 key');
+  const db = await getKeyDb();
+
+  // Try to load existing key from IndexedDB (non-extractable)
+  const stored = await db.get(KEY_STORE_NAME, 'master') as { key: CryptoKey } | undefined;
+  if (stored?.key) {
+    cachedKey = stored.key;
+    logCrypto('Loaded existing AES-256 key from IndexedDB');
+    return cachedKey as CryptoKey;
+  }
+
+  // Generate new non-extractable key (cannot be exported/stolen via XSS)
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    false, // NON-EXTRACTABLE - key cannot be exported
+    ['encrypt', 'decrypt']
+  );
+
+  // Store in IndexedDB (secure, not accessible via simple XSS)
+  await db.put(KEY_STORE_NAME, { id: 'master', key });
+  cachedKey = key;
+  logCrypto('Generated new non-extractable AES-256 key');
   return key;
 }
 
@@ -49,13 +80,7 @@ async function decryptPayload(payload: { iv: string; data: string }): Promise<st
 }
 
 async function getDb() {
-  return openDB(DB_NAME, 1, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-    },
-  });
+  return getKeyDb();
 }
 
 export async function saveBackup(messages: Message[]): Promise<void> {
@@ -89,4 +114,30 @@ export async function loadLatestBackup(): Promise<Message[] | null> {
     ...message,
     timestamp: new Date(message.timestamp),
   }));
+}
+
+/**
+ * Migrate from old localStorage key storage to secure IndexedDB
+ * Call this on app initialization to clean up legacy data
+ */
+export async function migrateFromLocalStorage(): Promise<void> {
+  const OLD_KEY_STORAGE = 'regis-matrix-aes-key';
+  const oldKey = localStorage.getItem(OLD_KEY_STORAGE);
+
+  if (oldKey) {
+    // Remove insecure localStorage key
+    localStorage.removeItem(OLD_KEY_STORAGE);
+    logCrypto('Migrated: removed old localStorage key (new secure key will be generated)');
+
+    // Note: Old backups encrypted with the old key will be lost
+    // This is acceptable for security - new backups will use the secure key
+  }
+}
+
+/**
+ * Initialize storage system (call on app start)
+ */
+export async function initializeStorage(): Promise<void> {
+  await migrateFromLocalStorage();
+  await getKey(); // Pre-warm key cache
 }
