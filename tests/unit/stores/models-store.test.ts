@@ -1,12 +1,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useModelsStore, hasProviderModels, getAvailableProviders } from '../../../src/lib/models-store';
 
+// Mock ai-providers module
+vi.mock('../../../src/lib/ai-providers', () => ({
+  fetchAllModels: vi.fn(),
+}));
+
+// Mock ai-providers-store module
+vi.mock('../../../src/lib/ai-providers-store', () => ({
+  getProviderSettings: vi.fn(() => ({
+    openai: { enabled: false },
+    anthropic: { enabled: false },
+    gemini: { enabled: false },
+    ollama: { enabled: false },
+  })),
+}));
+
+import { fetchAllModels } from '../../../src/lib/ai-providers';
+
 describe('models-store', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     // Reset store to initial state
     useModelsStore.getState().reset();
     vi.clearAllMocks();
+    // Reset fetchAllModels mock to return empty array by default
+    vi.mocked(fetchAllModels).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -41,12 +60,35 @@ describe('models-store', () => {
   });
 
   describe('fetchModels', () => {
-    it('fetches models successfully', async () => {
+    it('fetches models from providers successfully', async () => {
+      const mockAIModels = [
+        { id: 'claude-3', name: 'Claude 3', provider: 'anthropic', score: 90, contextWindow: 100000, maxOutput: 4096, costPer1kInput: 0.003, costPer1kOutput: 0.015, available: true },
+        { id: 'gpt-4', name: 'GPT-4', provider: 'openai', score: 88, contextWindow: 128000, maxOutput: 4096, costPer1kInput: 0.03, costPer1kOutput: 0.06, available: true },
+      ];
+
+      vi.mocked(fetchAllModels).mockResolvedValueOnce(mockAIModels);
+
+      await useModelsStore.getState().fetchModels();
+
+      const state = useModelsStore.getState();
+      expect(state.models).toHaveLength(2);
+      expect(state.models[0].id).toBe('claude-3');
+      expect(state.models[0].label).toBe('Claude 3');
+      expect(state.models[0].provider).toBe('anthropic');
+      expect(state.models[0].score).toBe(90);
+      expect(state.isLoading).toBe(false);
+      expect(state.isInitialized).toBe(true);
+      expect(state.error).toBeNull();
+      expect(state.lastFetched).toBeTruthy();
+    });
+
+    it('falls back to API when no provider models', async () => {
       const mockModels = [
         { id: 'claude-3', label: 'Claude 3', provider: 'anthropic' },
         { id: 'gpt-4', label: 'GPT-4', provider: 'openai' },
       ];
 
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([]);
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ models: mockModels }),
@@ -58,25 +100,20 @@ describe('models-store', () => {
       expect(state.models).toEqual(mockModels);
       expect(state.isLoading).toBe(false);
       expect(state.isInitialized).toBe(true);
-      expect(state.error).toBeNull();
-      expect(state.lastFetched).toBeTruthy();
     });
 
     it('sets loading state while fetching', async () => {
-      let resolvePromise: (value: Response) => void;
-      const fetchPromise = new Promise<Response>((resolve) => {
+      let resolvePromise: (value: unknown[]) => void;
+      const fetchPromise = new Promise<unknown[]>((resolve) => {
         resolvePromise = resolve;
       });
-      vi.mocked(fetch).mockReturnValueOnce(fetchPromise);
+      vi.mocked(fetchAllModels).mockReturnValueOnce(fetchPromise as Promise<never>);
 
       const fetchPromiseResult = useModelsStore.getState().fetchModels();
 
       expect(useModelsStore.getState().isLoading).toBe(true);
 
-      resolvePromise!({
-        ok: true,
-        json: () => Promise.resolve({ models: [] }),
-      } as Response);
+      resolvePromise!([]);
 
       await fetchPromiseResult;
 
@@ -84,11 +121,11 @@ describe('models-store', () => {
     });
 
     it('prevents concurrent fetches', async () => {
-      let resolvePromise: (value: Response) => void;
-      const fetchPromise = new Promise<Response>((resolve) => {
+      let resolvePromise: (value: unknown[]) => void;
+      const fetchPromise = new Promise<unknown[]>((resolve) => {
         resolvePromise = resolve;
       });
-      vi.mocked(fetch).mockReturnValue(fetchPromise);
+      vi.mocked(fetchAllModels).mockReturnValue(fetchPromise as Promise<never>);
 
       // Start first fetch
       const firstFetch = useModelsStore.getState().fetchModels();
@@ -97,12 +134,9 @@ describe('models-store', () => {
       const secondFetch = useModelsStore.getState().fetchModels();
 
       // Should only have one fetch call
-      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetchAllModels).toHaveBeenCalledTimes(1);
 
-      resolvePromise!({
-        ok: true,
-        json: () => Promise.resolve({ models: [] }),
-      } as Response);
+      resolvePromise!([]);
 
       await Promise.all([firstFetch, secondFetch]);
     });
@@ -111,10 +145,9 @@ describe('models-store', () => {
       vi.setSystemTime(new Date('2024-01-01T12:00:00Z'));
 
       // First fetch
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ models: [{ id: 'test', label: 'Test', provider: 'test' }] }),
-      } as Response);
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([
+        { id: 'test', name: 'Test', provider: 'ollama', score: 50, contextWindow: 8192, maxOutput: 4096, costPer1kInput: 0, costPer1kOutput: 0, available: true },
+      ]);
 
       await useModelsStore.getState().fetchModels();
 
@@ -124,17 +157,16 @@ describe('models-store', () => {
       // Second fetch should use cache
       await useModelsStore.getState().fetchModels();
 
-      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetchAllModels).toHaveBeenCalledTimes(1);
     });
 
     it('refetches after cache expires', async () => {
       vi.setSystemTime(new Date('2024-01-01T12:00:00Z'));
 
       // First fetch
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ models: [{ id: 'test', label: 'Test', provider: 'test' }] }),
-      } as Response);
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([
+        { id: 'test', name: 'Test', provider: 'ollama', score: 50, contextWindow: 8192, maxOutput: 4096, costPer1kInput: 0, costPer1kOutput: 0, available: true },
+      ]);
 
       await useModelsStore.getState().fetchModels();
 
@@ -142,17 +174,17 @@ describe('models-store', () => {
       vi.setSystemTime(new Date('2024-01-01T12:06:00Z'));
 
       // Second fetch should make new request
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ models: [{ id: 'test2', label: 'Test 2', provider: 'test' }] }),
-      } as Response);
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([
+        { id: 'test2', name: 'Test 2', provider: 'ollama', score: 50, contextWindow: 8192, maxOutput: 4096, costPer1kInput: 0, costPer1kOutput: 0, available: true },
+      ]);
 
       await useModelsStore.getState().fetchModels();
 
-      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetchAllModels).toHaveBeenCalledTimes(2);
     });
 
-    it('handles fetch error', async () => {
+    it('handles fetch error from API fallback', async () => {
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([]);
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -168,7 +200,7 @@ describe('models-store', () => {
     });
 
     it('handles network error', async () => {
-      vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
+      vi.mocked(fetchAllModels).mockRejectedValueOnce(new Error('Network error'));
 
       await useModelsStore.getState().fetchModels();
 
@@ -181,22 +213,20 @@ describe('models-store', () => {
   describe('refreshModels', () => {
     it('clears cache and refetches', async () => {
       // Initial fetch
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ models: [{ id: 'old', label: 'Old', provider: 'test' }] }),
-      } as Response);
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([
+        { id: 'old', name: 'Old', provider: 'ollama', score: 50, contextWindow: 8192, maxOutput: 4096, costPer1kInput: 0, costPer1kOutput: 0, available: true },
+      ]);
 
       await useModelsStore.getState().fetchModels();
 
       // Refresh should bypass cache
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ models: [{ id: 'new', label: 'New', provider: 'test' }] }),
-      } as Response);
+      vi.mocked(fetchAllModels).mockResolvedValueOnce([
+        { id: 'new', name: 'New', provider: 'ollama', score: 50, contextWindow: 8192, maxOutput: 4096, costPer1kInput: 0, costPer1kOutput: 0, available: true },
+      ]);
 
       await useModelsStore.getState().refreshModels();
 
-      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetchAllModels).toHaveBeenCalledTimes(2);
       expect(useModelsStore.getState().models[0].id).toBe('new');
     });
   });
@@ -226,6 +256,32 @@ describe('models-store', () => {
 
       const models = useModelsStore.getState().getModelsByProvider('unknown');
       expect(models).toEqual([]);
+    });
+  });
+
+  describe('getBestModel', () => {
+    it('returns the highest scored model', () => {
+      useModelsStore.setState({
+        models: [
+          { id: 'claude-3', label: 'Claude 3', provider: 'anthropic', score: 95 },
+          { id: 'gpt-4', label: 'GPT-4', provider: 'openai', score: 88 },
+          { id: 'llama', label: 'Llama', provider: 'ollama', score: 50 },
+        ],
+        isInitialized: true,
+      });
+
+      const best = useModelsStore.getState().getBestModel();
+
+      expect(best).not.toBeNull();
+      expect(best!.id).toBe('claude-3');
+      expect(best!.score).toBe(95);
+    });
+
+    it('returns null when no models', () => {
+      useModelsStore.setState({ models: [], isInitialized: true });
+
+      const best = useModelsStore.getState().getBestModel();
+      expect(best).toBeNull();
     });
   });
 

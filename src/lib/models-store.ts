@@ -1,9 +1,15 @@
 import { create } from 'zustand';
+import { fetchAllModels, type AIModel } from './ai-providers';
+import { getProviderSettings } from './ai-providers-store';
 
 export interface ModelInfo {
   id: string;
   label: string;
   provider: string;
+  score?: number;
+  contextWindow?: number;
+  costPer1kInput?: number;
+  costPer1kOutput?: number;
 }
 
 interface ModelsState {
@@ -20,12 +26,28 @@ interface ModelsState {
   refreshModels: () => Promise<void>;
   prefetchModels: () => void;
   getModelsByProvider: (provider: string) => ModelInfo[];
+  getBestModel: () => ModelInfo | null;
   reset: () => void;
 }
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 const BACKGROUND_REFRESH_INTERVAL = 4 * 60 * 1000; // 4 minutes (before TTL expires)
 const API_ENDPOINT = '/api/models';
+
+/**
+ * Convert AIModel to ModelInfo
+ */
+function aiModelToModelInfo(model: AIModel): ModelInfo {
+  return {
+    id: model.id,
+    label: model.name,
+    provider: model.provider,
+    score: model.score,
+    contextWindow: model.contextWindow,
+    costPer1kInput: model.costPer1kInput,
+    costPer1kOutput: model.costPer1kOutput,
+  };
+}
 
 // Deduplication map for concurrent fetches
 const pendingFetches = new Map<string, Promise<ModelInfo[]>>();
@@ -61,8 +83,9 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
   isPrefetching: false,
 
   /**
-   * Fetch models from API with caching and deduplication
+   * Fetch models from all configured AI providers
    * Uses lazy loading - only fetches if cache expired or not initialized
+   * Falls back to API endpoint if no providers configured
    */
   fetchModels: async () => {
     const state = get();
@@ -82,6 +105,18 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
     try {
       // Use dedupFetch to prevent duplicate network requests
       const models = await dedupFetch('models', async () => {
+        const providerSettings = getProviderSettings();
+
+        // Try to fetch from all configured providers
+        const aiModels = await fetchAllModels(providerSettings);
+
+        if (aiModels.length > 0) {
+          console.info(`[models] Fetched ${aiModels.length} models from providers`);
+          return aiModels.map(aiModelToModelInfo);
+        }
+
+        // Fallback to API endpoint if no provider models found
+        console.info('[models] No provider models, falling back to API');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -111,7 +146,7 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
         error: null,
       });
 
-      console.info(`[models] Loaded ${models.length} models from API`);
+      console.info(`[models] Loaded ${models.length} models total`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.warn('[models] Failed to fetch models:', message);
@@ -197,6 +232,17 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
    */
   getModelsByProvider: (provider: string) => {
     return get().models.filter((model) => model.provider === provider);
+  },
+
+  /**
+   * Get the best available model (highest score)
+   */
+  getBestModel: () => {
+    const { models } = get();
+    if (models.length === 0) return null;
+
+    // Models are already sorted by score (descending)
+    return models[0];
   },
 
   /**
