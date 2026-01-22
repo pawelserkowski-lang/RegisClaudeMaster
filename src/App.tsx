@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ChatInterface } from './components/ChatInterface';
 import { ResearchStatus } from './components/ResearchStatus';
+import { PipelineStatus } from './components/PipelineStatus';
 import type { HealthModelStatus } from './lib/health';
 import { useModelsStore } from './lib/models-store';
 import { fetchHealth } from './lib/health';
@@ -36,7 +37,9 @@ function App() {
     clearChat,
     undo,
     redo,
-  } = useChatState();
+    cancelRequest,
+    pipelineProgress,
+  } = useChatState({ usePipeline: true });
 
   // Local UI state
   const [selectedModel, setSelectedModel] = useState<string>('auto');
@@ -274,8 +277,29 @@ function App() {
           </motion.div>
         )}
 
-        {/* Research Status */}
-        <AnimatePresence>{isResearching && <ResearchStatus />}</AnimatePresence>
+        {/* Research Status (legacy) */}
+        <AnimatePresence>{isResearching && !pipelineProgress.isRunning && <ResearchStatus />}</AnimatePresence>
+
+        {/* Pipeline Status */}
+        <AnimatePresence>
+          {pipelineProgress.isRunning && (
+            <PipelineStatus
+              state={{
+                isRunning: pipelineProgress.isRunning,
+                currentStage: pipelineProgress.currentStage,
+                currentIteration: pipelineProgress.currentIteration,
+                stagesCompleted: pipelineProgress.stagesCompleted,
+                progress: pipelineProgress.progress,
+                result: null,
+                latestEvaluation: pipelineProgress.evaluation,
+                error: null,
+                currentModel: pipelineProgress.currentModel,
+                stageDurations: {},
+              }}
+              onCancel={cancelRequest}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Chat Messages */}
         <ChatInterface messages={messages} isLoading={isLoading} />
