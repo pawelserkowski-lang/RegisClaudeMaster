@@ -4,8 +4,8 @@
   "description": "AI-Powered Research Assistant with Edge backend and React frontend",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:ollama": "node dev-ollama.mjs",
+    "dev": "node dev-ollama.mjs",
+    "dev:vite": "vite",
     "dev:node25": "node dev-server.mjs",
     "build": "node node_modules/typescript/bin/tsc && vite build",
     "preview": "vite preview",
