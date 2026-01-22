@@ -8,7 +8,7 @@ test('tablet view - fibonacci request', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   
   // Navigate to app at localhost:5173
-  await page.goto('http://localhost:5173');
+  await page.goto('/');
   
   // Wait for page to load
   await page.waitForLoadState('networkidle');

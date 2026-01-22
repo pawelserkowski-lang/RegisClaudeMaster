@@ -2,22 +2,22 @@ import {
   listAvailableModels,
   getProvidersWithFallback,
   CircuitState,
-} from './providers';
+} from './_lib/services/providers';
 import {
   log,
   createLogger,
   extractRequestContext,
   addTrackingHeaders,
   type Logger,
-} from './logger';
+} from './_lib/utils/logger';
 import {
   recordAudit,
   createPromptAuditContext,
   createRateLimitAuditContext,
-} from './audit';
-import { metricsStore } from './metrics';
-import { verifyAccessToken } from './auth-utils';
-import { buildCorsHeaders, build429Headers } from './cors';
+} from './_lib/services/audit';
+import { metricsStore } from './_lib/services/metrics';
+import { verifyAccessToken } from './_lib/middleware/auth-utils';
+import { buildCorsHeaders, build429Headers } from './_lib/middleware/cors';
 import {
   responseCache,
   searchCache,
@@ -25,8 +25,8 @@ import {
   generateSearchKey,
   type ApiResponse,
   type SearchResult,
-} from './cache';
-import { dedup, generateRequestKey } from './dedup';
+} from './_lib/services/cache';
+import { dedup, generateRequestKey } from './_lib/middleware/dedup';
 import {
   checkAllLimiters,
   consumeProviderLimit,
@@ -35,9 +35,9 @@ import {
   getNextApiKey,
   reportKeyUsage,
   initializeApiKeyPools,
-} from './rate-limit';
-import { updateProviderHealth, startRequestTimer } from './provider-health';
-import { getCircuitBreaker } from './circuit-breaker';
+} from './_lib/middleware/rate-limit';
+import { updateProviderHealth, startRequestTimer } from './_lib/services/provider-health';
+import { getCircuitBreaker } from './_lib/middleware/circuit-breaker';
 import {
   ErrorCode,
   AppError,
@@ -46,7 +46,7 @@ import {
   createErrorResponse,
   toAppError,
   type ApiError as StructuredApiError,
-} from './errors';
+} from './_lib/utils/errors';
 import {
   performGrounding as performEnhancedGrounding,
   shouldGround as checkShouldGround,
@@ -55,7 +55,7 @@ import {
   makeSmartGroundingDecision,
   type GroundingSource,
   type GroundingResult,
-} from './grounding';
+} from './_lib/services/grounding';
 
 interface InputPayload {
   prompt: string;

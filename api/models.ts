@@ -1,5 +1,5 @@
-import { listAvailableModels } from './providers';
-import { buildCorsHeaders } from './cors';
+import { listAvailableModels } from './_lib/services/providers';
+import { buildCorsHeaders } from './_lib/middleware/cors';
 
 export const config = {
   runtime: 'edge',

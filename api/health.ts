@@ -1,11 +1,11 @@
-import { listAvailableModels } from './providers';
-import { getUsage } from './metrics';
-import { buildCorsHeaders } from './cors';
+import { listAvailableModels } from './_lib/services/providers';
+import { getUsage } from './_lib/services/metrics';
+import { buildCorsHeaders } from './_lib/middleware/cors';
 import {
   getHealthSummary,
   type ProviderHealth,
-} from './provider-health';
-import { getAllCircuitStats, CircuitState } from './circuit-breaker';
+} from './_lib/services/provider-health';
+import { getAllCircuitStats, CircuitState } from './_lib/middleware/circuit-breaker';
 
 export const config = {
   runtime: 'edge',

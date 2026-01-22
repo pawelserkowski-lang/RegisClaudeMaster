@@ -4,8 +4,8 @@
  */
 
 import { XCircle } from 'lucide-react';
-import type { RequestMetric } from '../../types/metrics';
-import { formatRelativeTime, formatLatency } from '../../lib/format';
+import type { RequestMetric } from '../../../../types/metrics';
+import { formatRelativeTime, formatLatency } from '../../../../lib/format';
 
 interface ErrorRowProps {
   error: RequestMetric;

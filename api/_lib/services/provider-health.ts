@@ -14,8 +14,8 @@ import {
   CircuitState,
   getCircuitBreaker,
   providerCircuits,
-} from './circuit-breaker';
-import { log } from './logger';
+} from '../middleware/circuit-breaker';
+import { log } from '../utils/logger';
 
 export type ProviderStatus = 'healthy' | 'degraded' | 'down';
 

@@ -16,8 +16,8 @@ import {
   RefreshCw,
   Brain,
 } from 'lucide-react';
-import type { PipelineStage, EvaluationResult } from '../lib/ai-pipeline';
-import type { PipelineState } from '../hooks/usePipeline';
+import type { PipelineStage, EvaluationResult } from '../../../lib/ai-pipeline';
+import type { PipelineState } from '../../../hooks/usePipeline';
 
 interface PipelineStatusProps {
   state: PipelineState;

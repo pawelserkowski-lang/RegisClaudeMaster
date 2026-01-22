@@ -8,7 +8,7 @@
  * - POST: Reorder priorities or reset to defaults
  */
 
-import { buildCorsHeaders } from './cors';
+import { buildCorsHeaders } from './_lib/middleware/cors';
 import {
   getProviderConfigs,
   getProviderConfig,

@@ -11,8 +11,8 @@ import {
   type LatencyPercentiles,
   type ProviderLatencyBreakdown,
   type TimeSeriesPoint,
-} from './metrics';
-import { checkAlerts, getActiveAlerts, type Alert } from './alerts';
+} from './_lib/services/metrics';
+import { checkAlerts, getActiveAlerts, type Alert } from './_lib/services/alerts';
 
 // Dashboard response interface
 export interface DashboardResponse {

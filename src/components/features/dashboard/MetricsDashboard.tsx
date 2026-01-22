@@ -21,10 +21,10 @@ import {
 } from 'lucide-react';
 
 // Types
-import type { DashboardData } from '../types/metrics';
+import type { DashboardData } from '../../../types/metrics';
 
 // Utilities
-import { formatNumber, formatCurrency, formatLatency } from '../lib/format';
+import { formatNumber, formatCurrency, formatLatency } from '../../../lib/format';
 
 // Sub-components
 import { AlertBadge, StatCard, ProviderCard, ErrorRow, Sparkline } from './metrics';

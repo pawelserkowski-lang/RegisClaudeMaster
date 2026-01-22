@@ -3,9 +3,9 @@
  * Provides cache invalidation, statistics, and management capabilities
  */
 
-import { buildCorsHeaders } from './cors';
-import { log } from './logger';
-import { verifyAccessToken } from './auth-utils';
+import { buildCorsHeaders } from './_lib/middleware/cors';
+import { log } from './_lib/utils/logger';
+import { verifyAccessToken } from './_lib/middleware/auth-utils';
 import {
   responseCache,
   searchCache,
@@ -15,8 +15,8 @@ import {
   invalidateByModel,
   invalidateByPattern,
   type CacheStats,
-} from './cache';
-import { getPendingStats, clearPending } from './dedup';
+} from './_lib/services/cache';
+import { getPendingStats, clearPending } from './_lib/middleware/dedup';
 
 export const config = {
   runtime: 'edge',

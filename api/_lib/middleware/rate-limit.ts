@@ -7,7 +7,7 @@
  * - API key rotation for load distribution
  */
 
-import { log } from './logger';
+import { log } from '../utils/logger';
 
 // ============================================================================
 // Types and Interfaces

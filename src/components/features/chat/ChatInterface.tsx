@@ -5,8 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { useTranslation } from 'react-i18next';
-import { cn, copyToClipboard, formatRelativeTime } from '../lib/utils';
-import type { Message } from '../lib/types';
+import { cn, copyToClipboard, formatRelativeTime } from '../../../lib/utils';
+import type { Message } from '../../../lib/types';
 import { SkeletonMessage } from './SkeletonMessage';
 
 interface ChatInterfaceProps {

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { ErrorCode, getRecoverySuggestions } from '../../api/errors';
-import type { ApiError } from '../../api/errors';
+import { ErrorCode, getRecoverySuggestions } from '../../../api/_lib/utils/errors';
+import type { ApiError } from '../../../api/_lib/utils/errors';
 
 interface ErrorDisplayProps {
   error: ApiError;
@@ -134,7 +134,7 @@ export function ErrorDisplay({ error, onRetry, onDismiss }: ErrorDisplayProps) {
 
           {suggestions.length > 0 && (
             <ul className="mt-3 space-y-1" aria-label="Recovery suggestions">
-              {suggestions.map((suggestion, idx) => (
+              {suggestions.map((suggestion: string, idx: number) => (
                 <li
                   key={idx}
                   className={`${styles.text} text-sm flex items-center gap-2`}

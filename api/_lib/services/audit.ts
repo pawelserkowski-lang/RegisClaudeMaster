@@ -3,7 +3,7 @@
  * Provides structured audit logging with filtering and statistics
  */
 
-import { generateRequestId } from './logger';
+import { generateRequestId } from '../utils/logger';
 
 /**
  * Types of auditable actions in the system

@@ -6,7 +6,7 @@ import {
   getCircuitBreaker,
   CircuitState,
   CircuitBreakerOpenError,
-} from './circuit-breaker';
+} from '../middleware/circuit-breaker';
 import {
   updateProviderHealth,
   startRequestTimer,
@@ -14,7 +14,7 @@ import {
   getProviderHealth,
   ProviderHealth,
 } from './provider-health';
-import { log } from './logger';
+import { log } from '../utils/logger';
 
 interface ProviderCallInput {
   prompt: string;
@@ -972,5 +972,5 @@ export async function executeWithHealthyFallback(
 }
 
 // Re-export circuit breaker types for convenience
-export { CircuitState, CircuitBreakerOpenError } from './circuit-breaker';
+export { CircuitState, CircuitBreakerOpenError } from '../middleware/circuit-breaker';
 export type { ProviderHealth } from './provider-health';

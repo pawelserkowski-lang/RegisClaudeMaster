@@ -1,8 +1,8 @@
-import { listAvailableModels, callProviderStreaming, type StreamingProviderCallInput } from './providers';
-import { log } from './logger';
-import { recordUsage } from './metrics';
-import { verifyAccessToken } from './auth-utils';
-import { buildCorsHeaders } from './cors';
+import { listAvailableModels, callProviderStreaming, type StreamingProviderCallInput } from './_lib/services/providers';
+import { log } from './_lib/utils/logger';
+import { recordUsage } from './_lib/services/metrics';
+import { verifyAccessToken } from './_lib/middleware/auth-utils';
+import { buildCorsHeaders } from './_lib/middleware/cors';
 
 interface InputPayload {
   prompt: string;

@@ -6,7 +6,7 @@ test.describe('TypeScript Question Test', () => {
     await page.setViewportSize({ width: 1280, height: 720 });
     
     // Navigate to the app
-    await page.goto('http://localhost:5173', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'networkidle' });
     
     console.log('Page loaded, looking for input...');
     

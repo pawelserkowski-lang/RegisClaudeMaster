@@ -3,8 +3,8 @@
  * Provides error parsing, retry logic, and partial failure handling
  */
 
-import { ErrorCode, isApiError } from '../../api/errors';
-import type { ApiError } from '../../api/errors';
+import { ErrorCode, isApiError } from '../../api/_lib/utils/errors';
+import type { ApiError } from '../../api/_lib/utils/errors';
 
 export interface ParsedError {
   apiError: ApiError;
@@ -53,7 +53,7 @@ export function parseError(error: unknown): ParsedError {
       ErrorCode.UNAUTHORIZED,
       ErrorCode.AUTH_EXPIRED,
       ErrorCode.AUTH_INVALID,
-    ].includes(error.code);
+    ].includes((error as any).code);
     return {
       apiError: error,
       isNetworkError: false,

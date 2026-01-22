@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Search, SearchX } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn } from '../../../lib/utils';
 
 interface GroundingToggleProps {
   enabled: boolean;

@@ -5,8 +5,8 @@
 
 import { motion } from 'framer-motion';
 import { AlertTriangle, AlertCircle } from 'lucide-react';
-import type { Alert } from '../../types/metrics';
-import { formatRelativeTime } from '../../lib/format';
+import type { Alert } from '../../../../types/metrics';
+import { formatRelativeTime } from '../../../../lib/format';
 
 interface AlertBadgeProps {
   alert: Alert;

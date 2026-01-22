@@ -6,8 +6,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Server, ChevronDown, ChevronUp } from 'lucide-react';
-import type { ProviderLatencyBreakdown } from '../../types/metrics';
-import { formatNumber, formatCurrency, formatLatency } from '../../lib/format';
+import type { ProviderLatencyBreakdown } from '../../../../types/metrics';
+import { formatNumber, formatCurrency, formatLatency } from '../../../../lib/format';
 
 interface ProviderCardProps {
   provider: string;

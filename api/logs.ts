@@ -3,19 +3,19 @@
  * Provides access to audit logs with filtering and statistics
  */
 
-import { buildCorsHeaders } from './cors';
+import { buildCorsHeaders } from './_lib/middleware/cors';
 import {
   getAuditLog,
   getAuditStats,
   getAuditEntry,
   type AuditAction,
   type AuditFilters,
-} from './audit';
+} from './_lib/services/audit';
 import {
   createLogger,
   extractRequestContext,
   addTrackingHeaders,
-} from './logger';
+} from './_lib/utils/logger';
 
 export const config = {
   runtime: 'edge',
